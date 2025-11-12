@@ -9,6 +9,7 @@ import { styles, gradientOptions, emojiOptions } from '../modals/TripModal.style
 
 // utils
 import ThemedText from '../../ThemedText'
+import { router } from 'expo-router'
 
 const AddTripModal = ({ visible, onClose, onSave }) => {
   const [selectedGradient, setSelectedGradient] = useState(gradientOptions[0])
@@ -24,7 +25,6 @@ const AddTripModal = ({ visible, onClose, onSave }) => {
   })
 
   const onStartDateChange = (event, selectedDate) => {
-    // Only for iOS - Android doesn't need this state management
     if (Platform.OS === 'ios') {
       setShowStartPicker(false)
       if (selectedDate) {

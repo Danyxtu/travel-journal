@@ -3,34 +3,43 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Spacer from '../../components/Spacer'
 import ThemedText from '../../components/ThemedText'
+import { styles } from '../../Styles/About.styles'
 
 export default function About() {
   const teamMembers = [
+
     {
       id: 1,
-      name: 'Sarah Johnson',
-      role: 'Product Designer',
-      avatar: '👩‍🎨',
-      color: ['#FF6B6B', '#FF8E53']
-    },
-    {
-      id: 2,
-      name: 'Mike Chen',
-      role: 'Lead Developer',
+      name: 'Danny D.P. Dinglasa Jr. ',
+      role: 'Project Manager & Lead Developer',
       avatar: '👨‍💻',
       color: ['#4E65FF', '#92EFFD']
     },
     {
+      id: 2,
+      name: 'Charles Dominic O. Gumondas',
+      role: 'Business Analyst',
+      avatar: '👩‍🎨',
+      color: ['#FF6B6B', '#FF8E53']
+    },
+    {
       id: 3,
-      name: 'Emma Williams',
-      role: 'UX Researcher',
+      name: 'Benedict Jambre',
+      role: 'System Analyst',
       avatar: '👩‍🔬',
       color: ['#11998E', '#38EF7D']
     },
     {
       id: 4,
-      name: 'Alex Martinez',
-      role: 'Backend Engineer',
+      name: 'Sheena Dianne L. De Guzman',
+      role: 'UI/UX Designer',
+      avatar: '👨‍🚀',
+      color: ['#667EEA', '#764BA2']
+    },
+    {
+      id: 5,
+      name: 'Ameer S. Sabtal',
+      role: 'Quality Assurance',
       avatar: '👨‍🚀',
       color: ['#667EEA', '#764BA2']
     }
@@ -239,231 +248,3 @@ export default function About() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-  },
-  heroSection: {
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  heroGradient: {
-    borderRadius: 24,
-    padding: 40,
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  appIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginBottom: 8,
-  },
-  appTagline: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  versionBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  versionText: {
-    fontSize: 12,
-    color: '#FFF',
-    fontWeight: '600',
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-  },
-  missionCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  missionText: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#444',
-  },
-  featuresGrid: {
-    gap: 12,
-  },
-  featureCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  featureIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFF5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  featureTitle: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 6,
-  },
-  featureDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  teamGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: 'space-between',
-  },
-  teamCard: {
-    width: '48%',
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  teamGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  teamAvatar: {
-    fontSize: 36,
-  },
-  teamName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  teamRole: {
-    fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-  },
-  statsSection: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 32,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FF6B6B',
-    marginBottom: 6,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-  },
-  socialContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FF6B6B',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  footer: {
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  copyrightText: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 12,
-  },
-  footerLinks: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  footerLink: {
-    fontSize: 12,
-    color: '#4E65FF',
-    fontWeight: '600',
-  },
-  footerSeparator: {
-    fontSize: 12,
-    color: '#CCC',
-  },
-  bottomSpacer: {
-    height: 40,
-  },
-})
