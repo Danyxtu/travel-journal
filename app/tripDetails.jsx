@@ -7,6 +7,7 @@ import {
   TextInput,
   Modal,
   StyleSheet,
+  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,26 +17,47 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useState, useEffect } from "react";
 import * as ImagePicker from "expo-image-picker";
 import uuid from "react-native-uuid";
-import { styles } from "../Styles/TripDetails.styles"; // Correct named import
+import { styles } from "../Styles/TripDetails.styles";
+import EditTripModal from "../components/ui/modals/EditTripModal";
+import EditNoteModal from "../components/ui/modals/EditNoteModal";
+
+const { width } = Dimensions.get("window");
 
 export default function TripDetails() {
   const params = useLocalSearchParams();
 
-  const [photos, setPhotos] = useState([]);
-  const [notes, setNotes] = useState([]);
-  const [noteModalVisible, setNoteModalVisible] = useState(false);
-  const [noteTitle, setNoteTitle] = useState("");
-  const [noteContent, setNoteContent] = useState("");
-
-  const trip = {
+  const [trip, setTrip] = useState({
     id: params.id,
     destination: params.destination,
     date: params.date,
     image: params.image,
+    photos: [],
+    notes: [],
     gradient: JSON.parse(params.gradient || '["#FF6B6B", "#FF8E53"]'),
     days: params.days,
     memories: params.memories,
-  };
+  });
+
+  const [photos, setPhotos] = useState([]);
+  const [notes, setNotes] = useState([]);
+
+  // State for Modals
+  const [addNoteModalVisible, setAddNoteModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editNoteModalVisible, setEditNoteModalVisible] = useState(false);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
+
+  const [captionModalVisible, setCaptionModalVisible] = useState(false);
+  const [pickedImageUri, setPickedImageUri] = useState(null);
+  const [caption, setCaption] = useState("");
+
+  // State for New Note Input
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteContent, setNoteContent] = useState("");
+
+  // State for selected items
+  const [selectedNote, setSelectedNote] = useState(null);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   // Load trip details on mount
   useEffect(() => {
@@ -48,16 +70,12 @@ export default function TripDetails() {
         const foundTrip = trips.find((t) => t.id === trip.id);
 
         if (foundTrip) {
-          // Filter out any "blank" (null or undefined) entries
           const cleanPhotos = (foundTrip.photos || []).filter((photo) => photo);
           const cleanNotes = (foundTrip.notes || []).filter((note) => note);
 
+          setTrip(foundTrip);
           setPhotos(cleanPhotos);
           setNotes(cleanNotes);
-          console.log("Loaded CLEAN data:", {
-            photos: cleanPhotos,
-            notes: cleanNotes,
-          });
         }
       } catch (error) {
         console.error("Failed to load trip details:", error);
@@ -66,7 +84,9 @@ export default function TripDetails() {
 
     loadTripDetails();
   }, [trip.id]);
-  const saveTripData = async (updatedPhotos, updatedNotes) => {
+
+  // General function to save trip data
+  const saveTripData = async (updatedData) => {
     try {
       const storedTrips = await AsyncStorage.getItem("@trips");
       const trips = storedTrips ? JSON.parse(storedTrips) : [];
@@ -75,8 +95,7 @@ export default function TripDetails() {
         t.id === trip.id
           ? {
               ...t,
-              photos: updatedPhotos !== undefined ? updatedPhotos : t.photos,
-              notes: updatedNotes !== undefined ? updatedNotes : t.notes,
+              ...updatedData,
             }
           : t
       );
@@ -84,6 +103,26 @@ export default function TripDetails() {
       await AsyncStorage.setItem("@trips", JSON.stringify(updatedTrips));
     } catch (error) {
       console.error("❌ Failed to save trip data:", error);
+    }
+  };
+
+  // Handle saving an EDITED trip
+  const handleSaveEdit = async (updatedTrip) => {
+    try {
+      const storedTrips = await AsyncStorage.getItem("@trips");
+      const trips = storedTrips ? JSON.parse(storedTrips) : [];
+
+      const updatedTrips = trips.map((t) =>
+        t.id === updatedTrip.id ? updatedTrip : t
+      );
+
+      await AsyncStorage.setItem("@trips", JSON.stringify(updatedTrips));
+
+      setTrip(updatedTrip);
+      setEditModalVisible(false);
+      console.log("✅ Trip updated successfully!");
+    } catch (error) {
+      console.error("❌ Failed to save edited trip:", error);
     }
   };
 
@@ -101,38 +140,46 @@ export default function TripDetails() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Correct enum
-        allowsEditing: true,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
         quality: 0.8,
       });
 
-      if (result.canceled) return;
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
 
       const pickedUri = result.assets[0].uri;
 
-      Alert.prompt(
-        "Add Caption",
-        "Write a short caption for this photo:",
-        async (caption) => {
-          const newPhoto = {
-            id: uuid.v4(),
-            uri: pickedUri,
-            caption: caption || "Untitled",
-          };
-          const updatedPhotos = [...photos, newPhoto];
-
-          setPhotos(updatedPhotos);
-          await saveTripData(updatedPhotos, notes); // Pass both states
-
-          console.log("✅ Photo added successfully!");
-        }
-      );
+      setPickedImageUri(pickedUri);
+      setCaptionModalVisible(true);
     } catch (error) {
       console.error("❌ Failed to add photo:", error);
     }
   };
 
-  // Add Note Function
+  // Handle saving the photo with caption
+  const handleSavePhoto = async () => {
+    if (!pickedImageUri) return;
+
+    const newPhoto = {
+      id: uuid.v4(),
+      uri: pickedImageUri,
+      caption: caption || "Untitled",
+    };
+    const updatedPhotos = [...photos, newPhoto];
+
+    setPhotos(updatedPhotos);
+    await saveTripData({ photos: updatedPhotos });
+
+    console.log("✅ Photo added successfully!");
+
+    setCaptionModalVisible(false);
+    setPickedImageUri(null);
+    setCaption("");
+  };
+
+  // Add NEW Note Function
   const addNoteToTrip = async () => {
     if (!noteTitle || !noteContent) {
       Alert.alert("Error", "Please fill in both title and content.");
@@ -152,17 +199,46 @@ export default function TripDetails() {
       }),
       title: noteTitle,
       content: noteContent,
-      mood: "📝", // Default mood
+      mood: "📝",
     };
 
     const updatedNotes = [...notes, newNote];
     setNotes(updatedNotes);
-    await saveTripData(photos, updatedNotes); // Pass both states
+    await saveTripData({ notes: updatedNotes });
 
-    // Reset modal state
     setNoteTitle("");
     setNoteContent("");
-    setNoteModalVisible(false);
+    setAddNoteModalVisible(false);
+  };
+
+  // Handle updating an EXISTING note
+  const handleUpdateNote = async (updatedNote) => {
+    try {
+      const updatedNotes = notes.map((note) =>
+        note.id === updatedNote.id ? updatedNote : note
+      );
+      setNotes(updatedNotes);
+      await saveTripData({ notes: updatedNotes });
+      setEditNoteModalVisible(false);
+      setSelectedNote(null);
+      console.log("✅ Note updated successfully!");
+    } catch (error) {
+      console.error("❌ Failed to update note:", error);
+    }
+  };
+
+  // Handle DELETING an existing note
+  const handleDeleteNote = async (noteId) => {
+    try {
+      const updatedNotes = notes.filter((note) => note.id !== noteId);
+      setNotes(updatedNotes);
+      await saveTripData({ notes: updatedNotes });
+      setEditNoteModalVisible(false);
+      setSelectedNote(null);
+      console.log("✅ Note deleted successfully!");
+    } catch (error) {
+      console.error("❌ Failed to delete note:", error);
+    }
   };
 
   // Delete Trip Function
@@ -183,7 +259,7 @@ export default function TripDetails() {
               const trips = JSON.parse(storedTrips).filter((t) => t.id !== id);
               await AsyncStorage.setItem("@trips", JSON.stringify(trips));
 
-              router.back(); // Go back to the previous screen
+              router.back();
             },
           },
         ]
@@ -191,6 +267,18 @@ export default function TripDetails() {
     } catch (error) {
       console.error("❌ Failed to delete trip:", error);
     }
+  };
+
+  // Function to open the edit note modal
+  const openEditNote = (note) => {
+    setSelectedNote(note);
+    setEditNoteModalVisible(true);
+  };
+
+  // Function to open the photo modal
+  const openPhotoModal = (photo) => {
+    setSelectedPhoto(photo);
+    setPhotoModalVisible(true);
   };
 
   return (
@@ -202,14 +290,45 @@ export default function TripDetails() {
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
+        {/* --- MODIFIED SECTION START --- */}
         <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
+          {/* This new View will contain the top row */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+              marginBottom: 20, // This adds space between the buttons and the title
+            }}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
+            {/* Left Side: Back Button */}
+            <TouchableOpacity
+              // We add {marginBottom: 0} to override the style from TripDetails.styles.js
+              style={[styles.backButton, { marginBottom: 0 }]}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
 
+            {/* Right Side: Action Buttons */}
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setEditModalVisible(true)}
+              >
+                <Ionicons name="create-outline" size={24} color="#FFF" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => deleteTripById(trip.id)}
+                style={styles.editButton}
+              >
+                <Ionicons name="trash" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* This part is unchanged, it's the centered info */}
           <View style={styles.headerInfo}>
             <ThemedText style={styles.headerEmoji}>{trip.image}</ThemedText>
             <ThemedText style={styles.headerTitle}>
@@ -251,30 +370,9 @@ export default function TripDetails() {
             </View>
           </View>
 
-          {/* Action Buttons */}
-          <View
-            style={{
-              flexDirection: "row",
-              gap: 12,
-              position: "absolute",
-              right: 20,
-              top: 60, // Assumes paddingTop is 60 from your styles
-            }}
-          >
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => console.log("TODO: Edit Trip Details")}
-            >
-              <Ionicons name="create-outline" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => deleteTripById(trip.id)}
-              style={styles.editButton}
-            >
-              <Ionicons name="trash" size={24} color="#FFF" />
-            </TouchableOpacity>
-          </View>
+          {/* The old absolutely positioned View for buttons is now REMOVED. */}
         </View>
+        {/* --- MODIFIED SECTION END --- */}
 
         {/* Decorative circles */}
         <View style={styles.decorativeCircle1} />
@@ -303,7 +401,11 @@ export default function TripDetails() {
             contentContainerStyle={styles.photosContainer}
           >
             {photos.map((photo) => (
-              <TouchableOpacity key={photo.id} activeOpacity={0.8}>
+              <TouchableOpacity
+                key={photo.id}
+                activeOpacity={0.8}
+                onPress={() => openPhotoModal(photo)}
+              >
                 <View style={styles.photoCard}>
                   <Image source={{ uri: photo.uri }} style={styles.photo} />
                   <LinearGradient
@@ -340,7 +442,7 @@ export default function TripDetails() {
             </ThemedText>
           </View>
 
-          {/* Corrected Note List */}
+          {/* Note List */}
           {Array.isArray(notes) && notes.length > 0 ? (
             notes.map((note, index) => (
               <TouchableOpacity
@@ -350,7 +452,7 @@ export default function TripDetails() {
                   styles.noteCard,
                   index === notes.length - 1 && styles.lastNote,
                 ]}
-                onPress={() => console.log("TODO: Open Note Details")}
+                onPress={() => openEditNote(note)}
               >
                 <View style={styles.noteHeader}>
                   <View style={styles.noteLeft}>
@@ -389,7 +491,7 @@ export default function TripDetails() {
           {/* Add Note Button */}
           <TouchableOpacity
             style={styles.addNoteButton}
-            onPress={() => setNoteModalVisible(true)}
+            onPress={() => setAddNoteModalVisible(true)}
             activeOpacity={0.7}
           >
             <Ionicons name="add-circle" size={20} color={trip.gradient[0]} />
@@ -404,21 +506,25 @@ export default function TripDetails() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Note Modal */}
+      {/* --- MODALS --- */}
+
+      {/* Add Note Modal */}
       <Modal
-        visible={noteModalVisible}
+        visible={addNoteModalVisible}
         animationType="slide"
         transparent
-        onRequestClose={() => setNoteModalVisible(false)}
+        onRequestClose={() => setAddNoteModalVisible(false)}
       >
-        <View style={modalStyles.modalOverlay}>
-          <View style={modalStyles.modalContainer}>
-            <ThemedText style={modalStyles.modalTitle}>New Note</ThemedText>
+        <View style={addNoteModalStyles.modalOverlay}>
+          <View style={addNoteModalStyles.modalContainer}>
+            <ThemedText style={addNoteModalStyles.modalTitle}>
+              New Note
+            </ThemedText>
             <TextInput
               placeholder="Note Title"
               value={noteTitle}
               onChangeText={setNoteTitle}
-              style={modalStyles.input}
+              style={addNoteModalStyles.input}
               placeholderTextColor="#888"
             />
             <TextInput
@@ -426,37 +532,189 @@ export default function TripDetails() {
               value={noteContent}
               onChangeText={setNoteContent}
               style={[
-                modalStyles.input,
+                addNoteModalStyles.input,
                 { height: 120, textAlignVertical: "top" },
               ]}
               multiline
               placeholderTextColor="#888"
             />
-            <View style={modalStyles.buttonRow}>
+            <View style={addNoteModalStyles.buttonRow}>
               <TouchableOpacity
-                onPress={() => setNoteModalVisible(false)}
-                style={[modalStyles.button, modalStyles.buttonCancel]}
+                onPress={() => setAddNoteModalVisible(false)}
+                style={[
+                  addNoteModalStyles.button,
+                  addNoteModalStyles.buttonCancel,
+                ]}
               >
-                <ThemedText style={modalStyles.buttonCancelText}>
+                <ThemedText style={addNoteModalStyles.buttonCancelText}>
                   Cancel
                 </ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={addNoteToTrip}
-                style={[modalStyles.button, modalStyles.buttonSave]}
+                style={[
+                  addNoteModalStyles.button,
+                  addNoteModalStyles.buttonSave,
+                ]}
               >
-                <ThemedText style={modalStyles.buttonSaveText}>Save</ThemedText>
+                <ThemedText style={addNoteModalStyles.buttonSaveText}>
+                  Save
+                </ThemedText>
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Add Photo Caption Modal */}
+      <Modal
+        visible={captionModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setCaptionModalVisible(false)}
+      >
+        <View style={addNoteModalStyles.modalOverlay}>
+          <View style={addNoteModalStyles.modalContainer}>
+            <ThemedText style={addNoteModalStyles.modalTitle}>
+              Add Caption
+            </ThemedText>
+            {pickedImageUri && (
+              <Image
+                source={{ uri: pickedImageUri }}
+                style={[styles.photoCard, { width: "100%", marginBottom: 20 }]}
+              />
+            )}
+            <TextInput
+              placeholder="Write a caption..."
+              value={caption}
+              onChangeText={setCaption}
+              style={addNoteModalStyles.input}
+              placeholderTextColor="#888"
+            />
+            <View style={addNoteModalStyles.buttonRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  setCaptionModalVisible(false);
+                  setPickedImageUri(null);
+                  setCaption("");
+                }}
+                style={[
+                  addNoteModalStyles.button,
+                  addNoteModalStyles.buttonCancel,
+                ]}
+              >
+                <ThemedText style={addNoteModalStyles.buttonCancelText}>
+                  Cancel
+                </ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSavePhoto}
+                style={[
+                  addNoteModalStyles.button,
+                  addNoteModalStyles.buttonSave,
+                ]}
+              >
+                <ThemedText style={addNoteModalStyles.buttonSaveText}>
+                  Save Photo
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Trip Modal */}
+      <EditTripModal
+        visible={editModalVisible}
+        onClose={() => setEditModalVisible(false)}
+        onSave={handleSaveEdit}
+        tripToEdit={trip}
+      />
+
+      {/* Edit Note Modal */}
+      <EditNoteModal
+        visible={editNoteModalVisible}
+        noteToEdit={selectedNote}
+        onClose={() => {
+          setEditNoteModalVisible(false);
+          setSelectedNote(null);
+        }}
+        onSave={handleUpdateNote}
+        onDelete={handleDeleteNote}
+      />
+
+      {/* View Photo Modal */}
+      <Modal
+        visible={photoModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPhotoModalVisible(false)}
+      >
+        <View style={viewPhotoModalStyles.modalContainer}>
+          <TouchableOpacity
+            style={viewPhotoModalStyles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setPhotoModalVisible(false)}
+          >
+            <View style={viewPhotoModalStyles.modalContent}>
+              <TouchableOpacity
+                style={viewPhotoModalStyles.closeButton}
+                onPress={() => setPhotoModalVisible(false)}
+              >
+                <Ionicons name="close-circle" size={36} color="#FFF" />
+              </TouchableOpacity>
+
+              {selectedPhoto && (
+                <>
+                  <Image
+                    source={{ uri: selectedPhoto.uri }}
+                    style={viewPhotoModalStyles.modalImage}
+                    resizeMode="contain"
+                  />
+                  <View style={viewPhotoModalStyles.modalInfo}>
+                    <View style={viewPhotoModalStyles.modalInfoHeader}>
+                      <View style={{ flex: 1 }}>
+                        <ThemedText style={viewPhotoModalStyles.modalTrip}>
+                          {selectedPhoto.caption}
+                        </ThemedText>
+                        <ThemedText style={viewPhotoModalStyles.modalDate}>
+                          From: {trip.destination}
+                        </ThemedText>
+                      </View>
+                      <View style={viewPhotoModalStyles.modalActions}>
+                        <TouchableOpacity
+                          style={viewPhotoModalStyles.actionButton}
+                        >
+                          <Ionicons
+                            name="share-outline"
+                            size={24}
+                            color="#FFF"
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={viewPhotoModalStyles.actionButton}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={24}
+                            color="#FF6B6B"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                </>
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
       </Modal>
     </View>
   );
 }
 
-// Styles for the modal
-const modalStyles = StyleSheet.create({
+// Styles for the ADD NOTE/CAPTION modal
+const addNoteModalStyles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -510,11 +768,72 @@ const modalStyles = StyleSheet.create({
     color: "#495057",
   },
   buttonSave: {
-    backgroundColor: "#FF6B6B", // Example color,
+    backgroundColor: "#FF6B6B",
     marginLeft: 8,
   },
   buttonSaveText: {
     color: "#FFF",
     fontWeight: "bold",
+  },
+});
+
+// Styles for the VIEW PHOTO modal
+const viewPhotoModalStyles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.95)",
+  },
+  modalBackdrop: {
+    flex: 1,
+  },
+  modalContent: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 10,
+  },
+  modalImage: {
+    width: width,
+    height: width,
+    alignSelf: "center",
+  },
+  modalInfo: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalInfoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  modalTrip: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFF",
+    marginBottom: 4,
+  },
+  modalDate: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  actionButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
